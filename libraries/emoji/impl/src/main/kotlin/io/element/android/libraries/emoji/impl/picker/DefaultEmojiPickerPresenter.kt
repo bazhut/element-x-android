@@ -84,8 +84,11 @@ class DefaultEmojiPickerPresenter(
                         emojis = emojis,
                     )
                 }
+                val customPickerEmojis = customEmojis.map { it.toPickerEmoji() }.toImmutableList()
+                val allEmojis = (customPickerEmojis + store.allEmojis).toImmutableList()
+                // Custom emojis which are not in the user's image pack anymore are not displayed
                 val recentEmojis = recentEmojiUnicodes
-                    .mapNotNull { unicode -> store.allEmojis.find { it.unicode == unicode } }
+                    .mapNotNull { unicode -> allEmojis.find { it.unicode == unicode } }
                     .toImmutableList()
                 val recentCategory = recentEmojis.takeIf { it.isNotEmpty() }?.let {
                     EmojiCategory(
@@ -94,7 +97,6 @@ class DefaultEmojiPickerPresenter(
                         emojis = it,
                     )
                 }
-                val customPickerEmojis = customEmojis.map { it.toPickerEmoji() }.toImmutableList()
                 val customCategory = customPickerEmojis.takeIf { it.isNotEmpty() }?.let {
                     EmojiCategory(
                         titleId = R.string.emoji_picker_category_custom,
@@ -104,7 +106,7 @@ class DefaultEmojiPickerPresenter(
                 }
                 EmojiPickerData(
                     categories = (listOfNotNull(recentCategory, customCategory) + baseCategories).toImmutableList(),
-                    allEmojis = (customPickerEmojis + store.allEmojis).toImmutableList(),
+                    allEmojis = allEmojis,
                 )
             }
         }

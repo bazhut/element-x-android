@@ -84,6 +84,23 @@ class EmojiPickerPresenterTest : RobolectricTest() {
     }
 
     @Test
+    fun `recent custom emojis are displayed only if they are still in the image pack`() = runTest {
+        createPresenter(
+            categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
+            getRecentEmojis = GetRecentEmojis {
+                Result.success(persistentListOf("mxc://example.org/blobcat", "mxc://example.org/removed", "😊"))
+            },
+            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmoji())) },
+        ).test {
+            val state = awaitStoreLoaded()
+            val recentCategory = state.categories.first()
+            assertThat(recentCategory.titleId).isEqualTo(R.string.emoji_picker_category_recent)
+            assertThat(recentCategory.emojis.map { it.unicode }).containsExactly("mxc://example.org/blobcat", "😊").inOrder()
+            assertThat(recentCategory.emojis.first().isCustom).isTrue()
+        }
+    }
+
+    @Test
     fun `failing to load custom emojis doesn't prevent the picker from loading`() = runTest {
         createPresenter(
             categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),

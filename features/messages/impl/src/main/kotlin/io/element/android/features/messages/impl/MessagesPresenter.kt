@@ -73,7 +73,6 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatch
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
-import io.element.android.libraries.emoji.api.customemojis.isCustomEmojiKey
 import io.element.android.libraries.emoji.api.recentemojis.AddRecentEmoji
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
@@ -507,9 +506,7 @@ class MessagesPresenter(
     ) = launch(dispatchers.io) {
         timelineController.invokeOnCurrentTimeline {
             toggleReaction(emoji, eventOrTransactionId)
-                // Custom emojis (mxc:// keys) are not stored as recent emojis, since the recent emojis are shared with other clients
-                // which may not support them.
-                .flatMap { added -> if (added && !emoji.isCustomEmojiKey()) addRecentEmoji(emoji) else Result.success(Unit) }
+                .flatMap { added -> if (added) addRecentEmoji(emoji) else Result.success(Unit) }
                 .onFailure { Timber.e(it) }
         }
     }

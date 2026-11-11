@@ -13,6 +13,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import io.element.android.features.messages.impl.R
+import io.element.android.libraries.emoji.api.customemojis.isCustomEmojiKey
 import io.element.android.libraries.ui.strings.CommonStrings
 
 @Composable
@@ -21,10 +22,15 @@ fun a11yReactionAction(
     emoji: String,
     userAlreadyReacted: Boolean,
 ): String {
-    return if (userAlreadyReacted) {
-        stringResource(id = CommonStrings.a11y_remove_reaction_with, emoji)
+    val reaction = if (emoji.isCustomEmojiKey()) {
+        stringResource(CommonStrings.a11y_custom_emoji)
     } else {
-        stringResource(id = CommonStrings.a11y_react_with, emoji)
+        emoji
+    }
+    return if (userAlreadyReacted) {
+        stringResource(id = CommonStrings.a11y_remove_reaction_with, reaction)
+    } else {
+        stringResource(id = CommonStrings.a11y_react_with, reaction)
     }
 }
 

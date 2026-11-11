@@ -49,6 +49,19 @@ class DefaultGetRecentEmojisTest {
         assertThat(getRecentEmojis()).isEqualTo(Result.success(persistentListOf(":)", ":D")))
     }
 
+    @Test
+    fun `invoke - keeps custom emojis`() = runTest {
+        val recentEmojiResult = persistentListOf("mxc://example.org/blobcat", ":)", "Custom reaction")
+        val getRecentEmojis = createDefaultGetRecentEmojis(
+            recentEmojis = { Result.success(recentEmojiResult) },
+            emojibaseContents = persistentMapOf(
+                People to persistentListOf(emoji(":)"))
+            )
+        )
+
+        assertThat(getRecentEmojis()).isEqualTo(Result.success(persistentListOf("mxc://example.org/blobcat", ":)")))
+    }
+
     private fun emoji(unicode: String) = Emoji(
         hexcode = "",
         label = "",

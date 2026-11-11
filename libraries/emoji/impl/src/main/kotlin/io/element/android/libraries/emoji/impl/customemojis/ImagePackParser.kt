@@ -8,7 +8,9 @@
 package io.element.android.libraries.emoji.impl.customemojis
 
 import io.element.android.libraries.emoji.api.customemojis.CustomEmoji
+import io.element.android.libraries.emoji.api.customemojis.CustomEmojiPack
 import io.element.android.libraries.emoji.api.customemojis.isCustomEmojiKey
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -28,10 +30,17 @@ internal object ImagePackParser {
     /**
      * @throws IllegalArgumentException if [content] is not a valid JSON object.
      */
-    fun parse(content: String): List<CustomEmoji> {
+    fun parse(content: String): CustomEmojiPack {
         val root = requireNotNull(Json.parseToJsonElement(content) as? JsonObject) { "Image pack content is not a JSON object" }
-        val packUsage = (root["pack"] as? JsonObject)?.usage()
-        val images = root["images"] as? JsonObject ?: return emptyList()
+        val pack = root["pack"] as? JsonObject
+        return CustomEmojiPack(
+            name = pack?.get("display_name").stringOrNull()?.takeIf { it.isNotBlank() },
+            emojis = parseEmojis(root["images"] as? JsonObject, packUsage = pack?.usage()).toImmutableList(),
+        )
+    }
+
+    private fun parseEmojis(images: JsonObject?, packUsage: List<String>?): List<CustomEmoji> {
+        if (images == null) return emptyList()
         return images.mapNotNull { (shortcode, element) ->
             val image = element as? JsonObject ?: return@mapNotNull null
             val url = image["url"].stringOrNull()?.takeIf { it.isCustomEmojiKey() } ?: return@mapNotNull null

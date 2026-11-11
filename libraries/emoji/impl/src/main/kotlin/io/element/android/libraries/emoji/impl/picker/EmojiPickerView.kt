@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.emojibasebindings.Emoji
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -40,6 +42,7 @@ import io.element.android.libraries.designsystem.text.toSp
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.SearchBar
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.emoji.api.customemojis.displayText
 import io.element.android.libraries.emoji.impl.R
 import kotlinx.collections.immutable.ImmutableList
@@ -86,16 +89,17 @@ internal fun EmojiPickerView(
                 selectedTabIndex = pagerState.currentPage,
             ) {
                 state.categories.forEachIndexed { index, category ->
+                    val title = category.title ?: stringResource(id = category.titleId)
                     Tab(
                         icon = {
                             when (category.icon) {
                                 is IconSource.Resource -> Icon(
                                     resourceId = category.icon.id,
-                                    contentDescription = stringResource(id = category.titleId)
+                                    contentDescription = title
                                 )
                                 is IconSource.Vector -> Icon(
                                     imageVector = category.icon.vector,
-                                    contentDescription = stringResource(id = category.titleId)
+                                    contentDescription = title
                                 )
                             }
                         },
@@ -111,9 +115,10 @@ internal fun EmojiPickerView(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth(),
             ) { index ->
-                val emojis = state.categories[index].emojis
+                val category = state.categories[index]
                 EmojiResults(
-                    emojis = emojis,
+                    title = category.title,
+                    emojis = category.emojis,
                     isEmojiSelected = { selectedEmojis.contains(it.unicode) },
                     onSelectEmoji = onSelectEmoji,
                     onLongPress = { skinPickerEmoji = it },
@@ -137,6 +142,7 @@ private fun EmojiResults(
     onDismissSkinPicker: () -> Unit,
     selectedEmojis: ImmutableSet<String>,
     contentDescription: @Composable (emoji: Emoji, isSelected: Boolean) -> String,
+    title: String? = null,
 ) {
     LazyVerticalGrid(
         modifier = Modifier.fillMaxSize(),
@@ -145,6 +151,16 @@ private fun EmojiResults(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        if (title != null) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    text = title,
+                    style = ElementTheme.typography.fontBodyMdMedium,
+                    color = ElementTheme.colors.textPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+        }
         items(emojis, key = { it.unicode }) { item ->
             EmojiItem(
                 modifier = Modifier.aspectRatio(1f),

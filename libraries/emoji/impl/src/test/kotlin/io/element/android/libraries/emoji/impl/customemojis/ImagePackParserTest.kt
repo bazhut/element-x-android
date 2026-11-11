@@ -23,15 +23,22 @@ class ImagePackParserTest {
               }
             }
         """.trimIndent()
-        assertThat(ImagePackParser.parse(content)).containsExactly(
+        assertThat(ImagePackParser.parse(content).emojis).containsExactly(
             CustomEmoji(shortcode = "party_parrot", url = "mxc://example.org/parrot", body = "Party parrot"),
             CustomEmoji(shortcode = "blobcat", url = "mxc://example.org/blobcat", body = null),
         ).inOrder()
     }
 
     @Test
+    fun `parse - returns the display name of the pack`() {
+        assertThat(ImagePackParser.parse("""{ "pack": { "display_name": "Team emojis" }, "images": {} }""").name).isEqualTo("Team emojis")
+        assertThat(ImagePackParser.parse("""{ "pack": { "display_name": " " } }""").name).isNull()
+        assertThat(ImagePackParser.parse("""{ "images": {} }""").name).isNull()
+    }
+
+    @Test
     fun `parse - returns an empty list when there are no images`() {
-        assertThat(ImagePackParser.parse("""{ "pack": { "display_name": "My pack" } }""")).isEmpty()
+        assertThat(ImagePackParser.parse("""{ "pack": { "display_name": "My pack" } }""").emojis).isEmpty()
     }
 
     @Test
@@ -47,7 +54,7 @@ class ImagePackParserTest {
               }
             }
         """.trimIndent()
-        assertThat(ImagePackParser.parse(content).map { it.shortcode }).containsExactly("valid")
+        assertThat(ImagePackParser.parse(content).emojis.map { it.shortcode }).containsExactly("valid")
     }
 
     @Test
@@ -63,7 +70,7 @@ class ImagePackParserTest {
               }
             }
         """.trimIndent()
-        assertThat(ImagePackParser.parse(content).map { it.shortcode }).containsExactly("emoticon", "both").inOrder()
+        assertThat(ImagePackParser.parse(content).emojis.map { it.shortcode }).containsExactly("emoticon", "both").inOrder()
     }
 
     @Test
@@ -77,7 +84,7 @@ class ImagePackParserTest {
               }
             }
         """.trimIndent()
-        assertThat(ImagePackParser.parse(content).map { it.shortcode }).containsExactly("no_usage", "empty_usage").inOrder()
+        assertThat(ImagePackParser.parse(content).emojis.map { it.shortcode }).containsExactly("no_usage", "empty_usage").inOrder()
     }
 
     @Test
@@ -90,7 +97,7 @@ class ImagePackParserTest {
               }
             }
         """.trimIndent()
-        assertThat(ImagePackParser.parse(content).map { it.shortcode }).containsExactly("first")
+        assertThat(ImagePackParser.parse(content).emojis.map { it.shortcode }).containsExactly("first")
     }
 
     @Test

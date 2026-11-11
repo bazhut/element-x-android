@@ -15,6 +15,7 @@ import io.element.android.emojibasebindings.Emoji
 import io.element.android.emojibasebindings.EmojibaseCategory
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
 import io.element.android.libraries.emoji.api.customemojis.CustomEmoji
+import io.element.android.libraries.emoji.api.customemojis.CustomEmojiPack
 import io.element.android.libraries.emoji.api.customemojis.GetCustomEmojis
 import io.element.android.libraries.emoji.api.customemojis.isCustom
 import io.element.android.libraries.emoji.api.picker.EmojiPickerState
@@ -69,7 +70,7 @@ class EmojiPickerPresenterTest : RobolectricTest() {
         createPresenter(
             categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
             getRecentEmojis = GetRecentEmojis { Result.success(persistentListOf("😊")) },
-            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmoji())) },
+            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmojiPack())) },
         ).test {
             val state = awaitStoreLoaded()
             assertThat(state.categories.size).isEqualTo(3)
@@ -84,13 +85,33 @@ class EmojiPickerPresenterTest : RobolectricTest() {
     }
 
     @Test
+    fun `each custom emoji pack gets its own category, named after the pack`() = runTest {
+        createPresenter(
+            categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
+            getCustomEmojis = GetCustomEmojis {
+                Result.success(
+                    persistentListOf(
+                        aCustomEmojiPack(name = "Team emojis"),
+                        CustomEmojiPack(name = null, emojis = persistentListOf(CustomEmoji(shortcode = "parrot", url = "mxc://example.org/parrot"))),
+                    )
+                )
+            },
+        ).test {
+            val state = awaitStoreLoaded()
+            assertThat(state.categories.map { it.title }).containsExactly("Team emojis", null, null).inOrder()
+            assertThat(state.categories[1].titleId).isEqualTo(R.string.emoji_picker_category_custom)
+            assertThat(state.categories[1].emojis.map { it.unicode }).containsExactly("mxc://example.org/parrot")
+        }
+    }
+
+    @Test
     fun `recent custom emojis are displayed only if they are still in the image pack`() = runTest {
         createPresenter(
             categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
             getRecentEmojis = GetRecentEmojis {
                 Result.success(persistentListOf("mxc://example.org/blobcat", "mxc://example.org/removed", "😊"))
             },
-            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmoji())) },
+            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmojiPack())) },
         ).test {
             val state = awaitStoreLoaded()
             val recentCategory = state.categories.first()
@@ -114,7 +135,7 @@ class EmojiPickerPresenterTest : RobolectricTest() {
     @Test
     fun `search results include custom emojis matching their shortcode, ignoring case`() = runTest {
         createPresenter(
-            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmoji())) },
+            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmojiPack())) },
         ).test {
             val initialState = awaitStoreLoaded()
             initialState.searchQuery.setTextAndPlaceCursorAtEnd("blob")
@@ -178,9 +199,14 @@ class EmojiPickerPresenterTest : RobolectricTest() {
         )
     ) = category to emojis
 
-    private fun aCustomEmoji() = CustomEmoji(
-        shortcode = "Blobcat",
-        url = "mxc://example.org/blobcat",
-        body = "A cat",
+    private fun aCustomEmojiPack(name: String? = null) = CustomEmojiPack(
+        name = name,
+        emojis = persistentListOf(
+            CustomEmoji(
+                shortcode = "Blobcat",
+                url = "mxc://example.org/blobcat",
+                body = "A cat",
+            )
+        ),
     )
 }

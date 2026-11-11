@@ -40,7 +40,13 @@ internal class DefaultEmojiPickerStatePreviewParam : PreviewParameterProvider<De
                             titleId = R.string.emoji_picker_category_custom,
                             icon = IconSource.Resource(CompoundDrawables.ic_compound_reaction),
                             emojis = customEmojiList(),
-                        )
+                            title = "Team emojis",
+                        ),
+                        EmojiCategory(
+                            titleId = R.string.emoji_picker_category_custom,
+                            icon = IconSource.Resource(CompoundDrawables.ic_compound_reaction),
+                            emojis = customEmojiList(),
+                        ),
                     ) + EmojibaseCategory.entries.map {
                         EmojiCategory(
                             titleId = it.title,

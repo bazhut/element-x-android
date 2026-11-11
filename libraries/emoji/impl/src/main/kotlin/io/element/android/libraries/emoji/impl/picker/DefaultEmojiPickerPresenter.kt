@@ -67,7 +67,7 @@ class DefaultEmojiPickerPresenter(
         val data by produceState(EmojiPickerData.Empty) {
             val storeDeferred = async { emojibaseProvider.getStore() }
             val recentsDeferred = async { getRecentEmojis().getOrNull() ?: persistentListOf() }
-            val customEmojisDeferred = async {
+            val customEmojiPacksDeferred = async {
                 getCustomEmojis()
                     .onFailure { Timber.e(it, "Failed to load custom emojis") }
                     .getOrNull()
@@ -75,7 +75,7 @@ class DefaultEmojiPickerPresenter(
             }
             val store = storeDeferred.await()
             val recentEmojiUnicodes = recentsDeferred.await()
-            val customEmojis = customEmojisDeferred.await()
+            val customEmojiPacks = customEmojiPacksDeferred.await()
             value = withContext(coroutineDispatchers.computation) {
                 val baseCategories = store.categories.map { (category, emojis) ->
                     EmojiCategory(
@@ -84,8 +84,15 @@ class DefaultEmojiPickerPresenter(
                         emojis = emojis,
                     )
                 }
-                val customPickerEmojis = customEmojis.map { it.toPickerEmoji() }.toImmutableList()
-                val allEmojis = (customPickerEmojis + store.allEmojis).toImmutableList()
+                val customCategories = customEmojiPacks.map { pack ->
+                    EmojiCategory(
+                        titleId = R.string.emoji_picker_category_custom,
+                        title = pack.name,
+                        icon = IconSource.Resource(io.element.android.compound.R.drawable.ic_compound_reaction),
+                        emojis = pack.emojis.map { it.toPickerEmoji() }.toImmutableList(),
+                    )
+                }
+                val allEmojis = (customCategories.flatMap { it.emojis } + store.allEmojis).toImmutableList()
                 // Custom emojis which are not in the user's image pack anymore are not displayed
                 val recentEmojis = recentEmojiUnicodes
                     .mapNotNull { unicode -> allEmojis.find { it.unicode == unicode } }
@@ -97,15 +104,8 @@ class DefaultEmojiPickerPresenter(
                         emojis = it,
                     )
                 }
-                val customCategory = customPickerEmojis.takeIf { it.isNotEmpty() }?.let {
-                    EmojiCategory(
-                        titleId = R.string.emoji_picker_category_custom,
-                        icon = IconSource.Resource(io.element.android.compound.R.drawable.ic_compound_reaction),
-                        emojis = it,
-                    )
-                }
                 EmojiPickerData(
-                    categories = (listOfNotNull(recentCategory, customCategory) + baseCategories).toImmutableList(),
+                    categories = (listOfNotNull(recentCategory) + customCategories + baseCategories).toImmutableList(),
                     allEmojis = allEmojis,
                 )
             }

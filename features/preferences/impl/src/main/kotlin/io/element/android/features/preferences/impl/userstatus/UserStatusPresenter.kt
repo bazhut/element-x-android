@@ -21,6 +21,7 @@ import dev.zacsweers.metro.Inject
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runUpdatingState
+import io.element.android.libraries.emoji.api.customemojis.EmptyGetCustomEmojis
 import io.element.android.libraries.emoji.api.picker.EmojiPickerPresenter
 import io.element.android.libraries.emoji.api.recentemojis.EmptyGetRecentEmojis
 import io.element.android.libraries.matrix.api.MatrixClient
@@ -31,7 +32,10 @@ class UserStatusPresenter(
     private val matrixClient: MatrixClient,
     emojiPickerPresenterFactory: EmojiPickerPresenter.Factory,
 ) : Presenter<UserStatusState> {
-    private val emojiPickerPresenter = emojiPickerPresenterFactory.create(EmptyGetRecentEmojis)
+    private val emojiPickerPresenter = emojiPickerPresenterFactory.create(
+        getRecentEmojis = EmptyGetRecentEmojis,
+        getCustomEmojis = EmptyGetCustomEmojis,
+    )
 
     @Composable
     override fun present(): UserStatusState {

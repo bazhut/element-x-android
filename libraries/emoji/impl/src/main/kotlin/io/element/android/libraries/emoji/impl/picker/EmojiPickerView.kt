@@ -40,6 +40,7 @@ import io.element.android.libraries.designsystem.text.toSp
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.SearchBar
+import io.element.android.libraries.emoji.api.customemojis.displayText
 import io.element.android.libraries.emoji.impl.R
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -52,7 +53,7 @@ internal fun EmojiPickerView(
     onSelectEmoji: (Emoji) -> Unit,
     selectedEmojis: ImmutableSet<String>,
     modifier: Modifier = Modifier,
-    contentDescription: @Composable (emoji: Emoji, isSelected: Boolean) -> String = { emoji, _ -> emoji.unicode },
+    contentDescription: @Composable (emoji: Emoji, isSelected: Boolean) -> String = { emoji, _ -> emoji.displayText },
 ) {
     val coroutineScope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { state.categories.size })

@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
@@ -50,11 +51,17 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
+import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.emojibasebindings.Emoji
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.emoji.api.customemojis.displayText
+import io.element.android.libraries.emoji.api.customemojis.isCustom
+import io.element.android.libraries.matrix.api.media.MediaSource
+import io.element.android.libraries.matrixmedia.api.MediaRequestData
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
@@ -71,7 +78,7 @@ internal fun EmojiItem(
     hasSelectedSkin: Boolean,
     modifier: Modifier = Modifier,
     emojiSize: TextUnit = 20.sp,
-    contentDescription: @Composable (emoji: Emoji, isSelected: Boolean) -> String = { emoji, _ -> emoji.unicode },
+    contentDescription: @Composable (emoji: Emoji, isSelected: Boolean) -> String = { emoji, _ -> emoji.displayText },
 ) {
     val backgroundColor = when {
         isSelected -> ElementTheme.colors.bgActionPrimaryRest
@@ -206,10 +213,19 @@ internal fun EmojiItem(
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = item.unicode,
-            style = LocalTextStyle.current.copy(fontSize = emojiSize),
-        )
+        if (item.isCustom) {
+            AsyncImage(
+                modifier = Modifier.size(emojiSize.toDp()),
+                model = MediaRequestData(MediaSource(item.unicode), MediaRequestData.Kind.Content),
+                contentScale = ContentScale.Fit,
+                contentDescription = null,
+            )
+        } else {
+            Text(
+                text = item.unicode,
+                style = LocalTextStyle.current.copy(fontSize = emojiSize),
+            )
+        }
         if (hasSkinTones) {
             val pickerIndicatorColor = ElementTheme.colors.borderInteractivePrimary
             Canvas(

@@ -26,6 +26,8 @@ import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
 import io.element.android.libraries.di.SessionScope
+import io.element.android.libraries.emoji.api.customemojis.CustomEmoji
+import io.element.android.libraries.emoji.api.customemojis.GetCustomEmojis
 import io.element.android.libraries.emoji.api.picker.EmojiPickerPresenter
 import io.element.android.libraries.emoji.api.picker.EmojiPickerState
 import io.element.android.libraries.emoji.api.recentemojis.GetRecentEmojis
@@ -37,18 +39,23 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 
 @AssistedInject
 class DefaultEmojiPickerPresenter(
     private val emojibaseProvider: EmojibaseProvider,
     @Assisted private val getRecentEmojis: GetRecentEmojis,
+    @Assisted private val getCustomEmojis: GetCustomEmojis,
     private val coroutineDispatchers: CoroutineDispatchers,
 ) : EmojiPickerPresenter {
     @AssistedFactory
     @ContributesBinding(SessionScope::class)
     interface Factory : EmojiPickerPresenter.Factory {
-        override fun create(getRecentEmojis: GetRecentEmojis): DefaultEmojiPickerPresenter
+        override fun create(
+            getRecentEmojis: GetRecentEmojis,
+            getCustomEmojis: GetCustomEmojis,
+        ): DefaultEmojiPickerPresenter
     }
 
     @Composable
@@ -60,8 +67,15 @@ class DefaultEmojiPickerPresenter(
         val data by produceState(EmojiPickerData.Empty) {
             val storeDeferred = async { emojibaseProvider.getStore() }
             val recentsDeferred = async { getRecentEmojis().getOrNull() ?: persistentListOf() }
+            val customEmojisDeferred = async {
+                getCustomEmojis()
+                    .onFailure { Timber.e(it, "Failed to load custom emojis") }
+                    .getOrNull()
+                    .orEmpty()
+            }
             val store = storeDeferred.await()
             val recentEmojiUnicodes = recentsDeferred.await()
+            val customEmojis = customEmojisDeferred.await()
             value = withContext(coroutineDispatchers.computation) {
                 val baseCategories = store.categories.map { (category, emojis) ->
                     EmojiCategory(
@@ -73,19 +87,24 @@ class DefaultEmojiPickerPresenter(
                 val recentEmojis = recentEmojiUnicodes
                     .mapNotNull { unicode -> store.allEmojis.find { it.unicode == unicode } }
                     .toImmutableList()
-                val categories = if (recentEmojis.isEmpty()) {
-                    baseCategories.toImmutableList()
-                } else {
-                    val recentCategory = EmojiCategory(
+                val recentCategory = recentEmojis.takeIf { it.isNotEmpty() }?.let {
+                    EmojiCategory(
                         titleId = R.string.emoji_picker_category_recent,
                         icon = IconSource.Resource(io.element.android.compound.R.drawable.ic_compound_history),
-                        emojis = recentEmojis,
+                        emojis = it,
                     )
-                    (listOf(recentCategory) + baseCategories).toImmutableList()
+                }
+                val customPickerEmojis = customEmojis.map { it.toPickerEmoji() }.toImmutableList()
+                val customCategory = customPickerEmojis.takeIf { it.isNotEmpty() }?.let {
+                    EmojiCategory(
+                        titleId = R.string.emoji_picker_category_custom,
+                        icon = IconSource.Resource(io.element.android.compound.R.drawable.ic_compound_reaction),
+                        emojis = it,
+                    )
                 }
                 EmojiPickerData(
-                    categories = categories,
-                    allEmojis = store.allEmojis,
+                    categories = (listOfNotNull(recentCategory, customCategory) + baseCategories).toImmutableList(),
+                    allEmojis = (customPickerEmojis + store.allEmojis).toImmutableList(),
                 )
             }
         }
@@ -102,8 +121,8 @@ class DefaultEmojiPickerPresenter(
                 data.allEmojis
                     .asSequence()
                     .filter { emoji ->
-                        emoji.tags.orEmpty().any { it.contains(lowercaseQuery) } ||
-                            emoji.shortcodes.any { it.contains(lowercaseQuery) }
+                        emoji.tags.orEmpty().any { it.contains(lowercaseQuery, ignoreCase = true) } ||
+                            emoji.shortcodes.any { it.contains(lowercaseQuery, ignoreCase = true) }
                     }
                     .take(60)
                     .toImmutableList()
@@ -138,3 +157,16 @@ private data class EmojiPickerData(
         val Empty = EmojiPickerData(persistentListOf(), persistentListOf())
     }
 }
+
+/**
+ * Maps a [CustomEmoji] to an [Emoji] the picker can display. The `mxc://` URL is stored in [Emoji.unicode], since it's the value
+ * used as reaction key, see [io.element.android.libraries.emoji.api.customemojis.isCustom].
+ */
+internal fun CustomEmoji.toPickerEmoji() = Emoji(
+    hexcode = "",
+    label = body ?: shortcode,
+    tags = body?.let { persistentListOf(it) },
+    shortcodes = persistentListOf(shortcode),
+    unicode = url,
+    skins = null,
+)

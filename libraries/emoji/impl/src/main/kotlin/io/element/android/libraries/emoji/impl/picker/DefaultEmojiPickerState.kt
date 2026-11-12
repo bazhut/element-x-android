@@ -28,8 +28,12 @@ internal data class DefaultEmojiPickerState(
     override val isReady = categories.isNotEmpty()
 }
 
+/**
+ * @property title the name of a custom emoji pack, displayed instead of [titleId] when present.
+ */
 internal data class EmojiCategory(
     @StringRes val titleId: Int,
     val icon: IconSource,
     val emojis: ImmutableList<Emoji>,
+    val title: String? = null,
 )

@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import io.element.android.emojibasebindings.Emoji
+import io.element.android.libraries.emoji.api.customemojis.displayText
 import kotlinx.collections.immutable.ImmutableSet
 
 /**
@@ -24,7 +25,8 @@ interface EmojiPickerRenderer {
      * Draws the picker.
      *
      * @param state opaque state produced by [EmojiPickerPresenter.present].
-     * @param onSelectEmoji invoked when the user taps an emoji (including a skin-tone variant).
+     * @param onSelectEmoji invoked when the user taps an emoji (including a skin-tone variant). For a custom emoji (see
+     * [io.element.android.libraries.emoji.api.customemojis.isCustom]), [Emoji.unicode] holds the `mxc://` URL to use as reaction key.
      * @param selectedEmojis emojis to visually mark as already selected.
      * @param modifier layout modifier for the picker container.
      * @param contentDescription accessibility label for each emoji cell.
@@ -35,7 +37,7 @@ interface EmojiPickerRenderer {
         onSelectEmoji: (Emoji) -> Unit,
         selectedEmojis: ImmutableSet<String>,
         modifier: Modifier = Modifier,
-        contentDescription: @Composable (Emoji, Boolean) -> String = { emoji, _ -> emoji.unicode },
+        contentDescription: @Composable (Emoji, Boolean) -> String = { emoji, _ -> emoji.displayText },
     )
 }
 

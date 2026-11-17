@@ -69,30 +69,7 @@ dependencyResolutionManagement {
             }
         }
 
-        // Temporary: the native call component and the matrix-rust-rtc core publish as GitHub release
-        // assets, which carry full Maven metadata. Both blocks go once they reach Maven Central.
-        ivy {
-            url = uri("https://github.com/element-hq/element-call-android/releases/download")
-            patternLayout { artifact("v[revision]/[artifact]-[revision](-[classifier])(.[ext])") }
-            metadataSources { gradleMetadata() }
-            content {
-                // Per module: `element-call.*` would also catch element-call-embedded, the WebView call.
-                includeModule("io.element.android", "element-call-bom")
-                includeModule("io.element.android", "element-call-api")
-                includeModule("io.element.android", "element-call")
-                includeModule("io.element.android", "element-call-ui")
-                includeModule("io.element.android", "element-call-test")
-            }
-        }
-        ivy {
-            url = uri("https://github.com/element-hq/matrix-rust-rtc/releases/download")
-            patternLayout { artifact("v[revision]/[artifact]-[revision](-[classifier])(.[ext])") }
-            // The core ships an AAR and nothing else; element-call's module metadata names it with an
-            // explicit aar artifact selector, so it needs no POM.
-            metadataSources { artifact() }
-            content { includeModule("io.element.android", "matrix-rtc-android") }
-        }
-        // Also temporary: testing an unreleased element-call-android build. Publish it there with
+        // Testing an unreleased element-call-android build. Publish it there with
         // `publishToMavenLocal -PVERSION_NAME=0.1.0-local`, then build here with
         // `-PelementCallLocalVersion=0.1.0-local`. Absent without the property, so that everything
         // resolves for a contributor who has never built the library.
@@ -127,13 +104,43 @@ include(":tests:testutils")
 include(":annotations")
 include(":codegen")
 
+/**
+ * Finds the Gradle projects in [directory]: the folders containing a `build.gradle.kts` file, up to [maxDepth] levels below.
+ *
+ * The search runs in a [ValueSource] so that only its result, the list of projects, is a configuration cache input. Listing
+ * the folders directly in the settings script would make each listed folder an input, and adding or removing any file in
+ * them (build outputs, `.git` content, etc.) would invalidate the configuration cache.
+ */
 private fun findProjects(directory: File, path: String, maxDepth: Int = 1): List<String> {
-    return directory.listFiles().orEmpty().sorted().filter { it.isDirectory }.flatMap { subDir ->
-        val newPath = "$path:${subDir.name}"
-        when {
-            File(subDir, "build.gradle.kts").exists() -> listOf(newPath)
-            maxDepth > 0 -> findProjects(subDir, newPath, maxDepth - 1)
-            else -> emptyList()
+    return providers.of(ProjectsValueSource::class) {
+        parameters {
+            this.directory.set(directory)
+            this.path.set(path)
+            this.maxDepth.set(maxDepth)
+        }
+    }.get()
+}
+
+abstract class ProjectsValueSource : ValueSource<List<String>, ProjectsValueSource.Parameters> {
+    interface Parameters : ValueSourceParameters {
+        val directory: Property<File>
+        val path: Property<String>
+        val maxDepth: Property<Int>
+    }
+
+    override fun obtain(): List<String> = search(parameters.directory.get(), parameters.path.get(), parameters.maxDepth.get())
+
+    private fun search(directory: File, path: String, maxDepth: Int): List<String> {
+        return directory.listFiles { file ->
+            // Skip hidden folders (e.g. `.git`) and build outputs, which can't contain projects.
+            file.isDirectory && !file.name.startsWith(".") && file.name != "build"
+        }.orEmpty().sorted().flatMap { subDir ->
+            val newPath = "$path:${subDir.name}"
+            when {
+                File(subDir, "build.gradle.kts").exists() -> listOf(newPath)
+                maxDepth > 0 -> search(subDir, newPath, maxDepth - 1)
+                else -> emptyList()
+            }
         }
     }
 }

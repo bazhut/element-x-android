@@ -42,6 +42,10 @@ dependencies {
     // foreground service, so that the two paths cannot leave two call notifications in the shade.
     implementation(projects.libraries.push.api)
     implementation(projects.services.appnavstate.api)
+    // The call's analytics go to the embedded Element Call's PostHog project, through :features:callnative:posthog
+    // which only gplay builds include.
+    implementation(projects.services.analytics.api)
+    implementation(projects.libraries.core)
     implementation(libs.androidx.corektx)
 
     testCommonDependencies(libs)
@@ -49,4 +53,5 @@ dependencies {
     testImplementation(projects.features.call.test)
     testImplementation(projects.libraries.matrix.test)
     testImplementation(projects.services.appnavstate.test)
+    testImplementation(projects.services.analytics.test)
 }

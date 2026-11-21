@@ -12,9 +12,12 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.emojibasebindings.Emoji
 import io.element.android.emojibasebindings.EmojibaseCategory
+import io.element.android.libraries.designsystem.icons.CompoundDrawables
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
+import io.element.android.libraries.emoji.api.customemojis.CustomEmoji
 import io.element.android.libraries.emoji.api.picker.EmojiPickerState
+import io.element.android.libraries.emoji.impl.R
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -30,8 +33,36 @@ internal class DefaultEmojiPickerStatePreviewParam : PreviewParameterProvider<De
                 searchQuery = "smile",
                 searchResults = SearchBarResultState.Results(emojiList())
             ),
+            aDefaultEmojiPickerState(
+                categories = (
+                    listOf(
+                        EmojiCategory(
+                            titleId = R.string.emoji_picker_category_custom,
+                            icon = IconSource.Resource(CompoundDrawables.ic_compound_reaction),
+                            emojis = customEmojiList(),
+                            title = "Team emojis",
+                        ),
+                        EmojiCategory(
+                            titleId = R.string.emoji_picker_category_custom,
+                            icon = IconSource.Resource(CompoundDrawables.ic_compound_reaction),
+                            emojis = customEmojiList(),
+                        ),
+                    ) + EmojibaseCategory.entries.map {
+                        EmojiCategory(
+                            titleId = it.title,
+                            icon = IconSource.Vector(it.icon),
+                            emojis = emojiList(),
+                        )
+                    }
+                ).toImmutableList(),
+            ),
         )
 }
+
+private fun customEmojiList(): ImmutableList<Emoji> = persistentListOf(
+    CustomEmoji(shortcode = "party_parrot", url = "mxc://matrix.org/party_parrot", body = "Party parrot").toPickerEmoji(),
+    CustomEmoji(shortcode = "blobcat", url = "mxc://matrix.org/blobcat").toPickerEmoji(),
+)
 
 private fun emojiList(): ImmutableList<Emoji> = persistentListOf(
     Emoji(

@@ -1,5 +1,6 @@
 import config.BuildTimeConfig
 import extension.buildConfigFieldStr
+import extension.readLocalProperty
 
 /*
  * Copyright (c) 2025 Element Creations Ltd.
@@ -20,6 +21,12 @@ android {
     }
 
     defaultConfig {
+        // Kept out of the repository: set it in the environment or in local.properties.
+        buildConfigFieldStr(
+            name = "SHARED_EMOJI_PACK_URL",
+            value = System.getenv("ELEMENT_ANDROID_SHARED_EMOJI_PACK_URL")
+                ?: readLocalProperty("services.emoji.shared_pack_url"),
+        )
         buildConfigFieldStr(
             name = "URL_POLICY",
             value = if (isEnterpriseBuild) {

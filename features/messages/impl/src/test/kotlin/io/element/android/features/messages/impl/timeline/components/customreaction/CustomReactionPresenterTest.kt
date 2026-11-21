@@ -11,6 +11,7 @@ package io.element.android.features.messages.impl.timeline.components.customreac
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.aTimelineItemReactions
+import io.element.android.libraries.emoji.api.customemojis.EmptyGetCustomEmojis
 import io.element.android.libraries.emoji.api.recentemojis.EmptyGetRecentEmojis
 import io.element.android.libraries.emoji.test.fakeEmojiPickerPresenterFactory
 import io.element.android.libraries.matrix.test.AN_EVENT_ID
@@ -27,6 +28,7 @@ class CustomReactionPresenterTest {
     private val presenter = CustomReactionPresenter(
         emojiPickerPresenterFactory = fakeEmojiPickerPresenterFactory(),
         getRecentEmojis = EmptyGetRecentEmojis,
+        getCustomEmojis = EmptyGetCustomEmojis,
     )
 
     @Test

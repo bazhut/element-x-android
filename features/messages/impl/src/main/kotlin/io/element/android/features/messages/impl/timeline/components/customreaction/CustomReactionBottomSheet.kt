@@ -24,6 +24,7 @@ import io.element.android.emojibasebindings.Emoji
 import io.element.android.features.messages.impl.timeline.a11y.a11yReactionAction
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.hide
+import io.element.android.libraries.emoji.api.customemojis.displayText
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 
@@ -66,7 +67,7 @@ fun CustomReactionBottomSheet(
                     selectedEmojis = state.selectedEmoji,
                     modifier = Modifier.fillMaxSize(),
                     contentDescription = { emoji, isSelected ->
-                        a11yReactionAction(emoji = emoji.unicode, userAlreadyReacted = isSelected)
+                        a11yReactionAction(emoji = emoji.displayText, userAlreadyReacted = isSelected)
                     },
                 )
             }

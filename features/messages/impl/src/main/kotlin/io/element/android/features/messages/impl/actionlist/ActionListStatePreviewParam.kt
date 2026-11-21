@@ -187,6 +187,16 @@ open class ActionListStatePreviewParam : PreviewParameterProvider<ActionListStat
                         recentEmojis = suggestedEmojis,
                     )
                 ),
+                anActionListState(
+                    target = ActionListState.Target.Success(
+                        event = aTimelineItemEvent(),
+                        sentTimeFull = "January 1, 1970 at 12:00 AM",
+                        displayEmojiReactions = true,
+                        verifiedUserSendFailure = VerifiedUserSendFailure.None,
+                        actions = aTimelineItemActionList(),
+                        recentEmojis = (suggestedEmojis + "mxc://matrix.org/blobcat").toImmutableList(),
+                    )
+                ),
             )
         }
 }

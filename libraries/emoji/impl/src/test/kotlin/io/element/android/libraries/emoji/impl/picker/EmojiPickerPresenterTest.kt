@@ -14,8 +14,13 @@ import com.google.common.truth.Truth.assertThat
 import io.element.android.emojibasebindings.Emoji
 import io.element.android.emojibasebindings.EmojibaseCategory
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
+import io.element.android.libraries.emoji.api.customemojis.CustomEmoji
+import io.element.android.libraries.emoji.api.customemojis.CustomEmojiPack
+import io.element.android.libraries.emoji.api.customemojis.GetCustomEmojis
+import io.element.android.libraries.emoji.api.customemojis.isCustom
 import io.element.android.libraries.emoji.api.picker.EmojiPickerState
 import io.element.android.libraries.emoji.api.recentemojis.GetRecentEmojis
+import io.element.android.libraries.emoji.impl.R
 import io.element.android.libraries.emoji.impl.fixtures.FakeEmojibaseProvider
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.robolectric.RobolectricTest
@@ -61,6 +66,88 @@ class EmojiPickerPresenterTest : RobolectricTest() {
     }
 
     @Test
+    fun `custom emojis are added as a category after the recent one when the source returns any`() = runTest {
+        createPresenter(
+            categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
+            getRecentEmojis = GetRecentEmojis { Result.success(persistentListOf("😊")) },
+            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmojiPack())) },
+        ).test {
+            val state = awaitStoreLoaded()
+            assertThat(state.categories.size).isEqualTo(3)
+            assertThat(state.categories[0].titleId).isEqualTo(R.string.emoji_picker_category_recent)
+            val customCategory = state.categories[1]
+            assertThat(customCategory.titleId).isEqualTo(R.string.emoji_picker_category_custom)
+            val customEmoji = customCategory.emojis.single()
+            assertThat(customEmoji.isCustom).isTrue()
+            assertThat(customEmoji.unicode).isEqualTo("mxc://example.org/blobcat")
+            assertThat(customEmoji.shortcodes).containsExactly("Blobcat")
+        }
+    }
+
+    @Test
+    fun `each custom emoji pack gets its own category, named after the pack`() = runTest {
+        createPresenter(
+            categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
+            getCustomEmojis = GetCustomEmojis {
+                Result.success(
+                    persistentListOf(
+                        aCustomEmojiPack(name = "Team emojis"),
+                        CustomEmojiPack(name = null, emojis = persistentListOf(CustomEmoji(shortcode = "parrot", url = "mxc://example.org/parrot"))),
+                    )
+                )
+            },
+        ).test {
+            val state = awaitStoreLoaded()
+            assertThat(state.categories.map { it.title }).containsExactly("Team emojis", null, null).inOrder()
+            assertThat(state.categories[1].titleId).isEqualTo(R.string.emoji_picker_category_custom)
+            assertThat(state.categories[1].emojis.map { it.unicode }).containsExactly("mxc://example.org/parrot")
+        }
+    }
+
+    @Test
+    fun `recent custom emojis are displayed only if they are still in the image pack`() = runTest {
+        createPresenter(
+            categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
+            getRecentEmojis = GetRecentEmojis {
+                Result.success(persistentListOf("mxc://example.org/blobcat", "mxc://example.org/removed", "😊"))
+            },
+            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmojiPack())) },
+        ).test {
+            val state = awaitStoreLoaded()
+            val recentCategory = state.categories.first()
+            assertThat(recentCategory.titleId).isEqualTo(R.string.emoji_picker_category_recent)
+            assertThat(recentCategory.emojis.map { it.unicode }).containsExactly("mxc://example.org/blobcat", "😊").inOrder()
+            assertThat(recentCategory.emojis.first().isCustom).isTrue()
+        }
+    }
+
+    @Test
+    fun `failing to load custom emojis doesn't prevent the picker from loading`() = runTest {
+        createPresenter(
+            categories = persistentListOf(emojiCategory(EmojibaseCategory.Activity)),
+            getCustomEmojis = GetCustomEmojis { Result.failure(IllegalStateException("Boom")) },
+        ).test {
+            val state = awaitStoreLoaded()
+            assertThat(state.categories.size).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun `search results include custom emojis matching their shortcode, ignoring case`() = runTest {
+        createPresenter(
+            getCustomEmojis = GetCustomEmojis { Result.success(persistentListOf(aCustomEmojiPack())) },
+        ).test {
+            val initialState = awaitStoreLoaded()
+            initialState.searchQuery.setTextAndPlaceCursorAtEnd("blob")
+            skipItems(1)
+            val results = (awaitItem() as DefaultEmojiPickerState).searchResults
+            assertThat(results).isInstanceOf(SearchBarResultState.Results::class.java)
+            val emojis = (results as SearchBarResultState.Results).results
+            assertThat(emojis.map { it.unicode }).containsExactly("mxc://example.org/blobcat")
+        }
+    }
+
+    @Test
     fun `ToggleSearchActive toggles the search state`() = runTest {
         createPresenter().test {
             val initialState = awaitStoreLoaded()
@@ -97,9 +184,11 @@ class EmojiPickerPresenterTest : RobolectricTest() {
     private fun TestScope.createPresenter(
         categories: ImmutableList<Pair<EmojibaseCategory, ImmutableList<Emoji>>> = persistentListOf(emojiCategory()),
         getRecentEmojis: GetRecentEmojis = GetRecentEmojis { Result.success(persistentListOf()) },
+        getCustomEmojis: GetCustomEmojis = GetCustomEmojis { Result.success(persistentListOf()) },
     ) = DefaultEmojiPickerPresenter(
         emojibaseProvider = FakeEmojibaseProvider(emojis = categories.toMap()),
         getRecentEmojis = getRecentEmojis,
+        getCustomEmojis = getCustomEmojis,
         coroutineDispatchers = testCoroutineDispatchers(),
     )
 
@@ -109,4 +198,15 @@ class EmojiPickerPresenterTest : RobolectricTest() {
             Emoji("1F3C3", "Smile", persistentListOf("smile"), persistentListOf("smile"), "😊", skins = null)
         )
     ) = category to emojis
+
+    private fun aCustomEmojiPack(name: String? = null) = CustomEmojiPack(
+        name = name,
+        emojis = persistentListOf(
+            CustomEmoji(
+                shortcode = "Blobcat",
+                url = "mxc://example.org/blobcat",
+                body = "A cat",
+            )
+        ),
+    )
 }

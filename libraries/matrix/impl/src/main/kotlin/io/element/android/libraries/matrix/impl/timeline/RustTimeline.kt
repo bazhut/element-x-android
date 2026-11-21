@@ -49,9 +49,9 @@ import io.element.android.libraries.matrix.impl.timeline.reply.InReplyToMapper
 import io.element.android.libraries.matrix.impl.util.MessageEventContent
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -149,7 +149,9 @@ class RustTimeline(
     init {
         when (mode) {
             is Timeline.Mode.Live, is Timeline.Mode.FocusedOnEvent -> coroutineScope.fetchMembers()
-            else -> Unit
+            Timeline.Mode.PinnedEvents,
+            Timeline.Mode.Media,
+            is Timeline.Mode.Thread -> Unit
         }
 
         if (mode == Timeline.Mode.Live) {
@@ -243,7 +245,7 @@ class RustTimeline(
         roomInfo,
         ->
         withContext(dispatcher) {
-            val (roomCreators, isDm, joinRule, isEncrypted) = roomInfo
+            val (roomCreators, isDm) = roomInfo
             timelineItems
                 .let { items ->
                     roomBeginningPostProcessor.process(
@@ -282,6 +284,8 @@ class RustTimeline(
     private fun CoroutineScope.fetchMembers() = launch(dispatcher) {
         try {
             inner.fetchMembers()
+        } catch (e: CancellationException) {
+            throw e
         } catch (exception: Exception) {
             Timber.tag(loggerTag).e(exception, "Error fetching members for room ${joinedRoom.roomId}")
         }
@@ -350,7 +354,7 @@ class RustTimeline(
                 },
                 mentions = null,
             )
-            withContext(Dispatchers.IO) {
+            withContext(dispatcher) {
                 inner.edit(
                     newContent = editedContent,
                     eventOrTransactionId = eventOrTransactionId.toRustEventOrTransactionId(),

@@ -49,6 +49,7 @@ import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
+import io.element.android.libraries.emoji.api.customemojis.EmptyGetCustomEmojis
 import io.element.android.libraries.emoji.api.picker.EmojiPickerPresenter
 import io.element.android.libraries.emoji.api.recentemojis.AddRecentEmoji
 import io.element.android.libraries.emoji.api.recentemojis.GetRecentEmojis
@@ -167,7 +168,12 @@ class MessageComposerPresenter(
     private val mediaSender = mediaSenderFactory.create(timelineMode = timelineController.mainTimelineMode())
 
     private val cameraPermissionPresenter = permissionsPresenterFactory.create(Manifest.permission.CAMERA)
-    private val emojiPickerPresenter = emojiPickerPresenterFactory.create(getRecentEmojis)
+
+    // The composer inserts emojis as text, which custom emojis (`mxc://` keys) can't be.
+    private val emojiPickerPresenter = emojiPickerPresenterFactory.create(
+        getRecentEmojis = getRecentEmojis,
+        getCustomEmojis = EmptyGetCustomEmojis,
+    )
     private var pendingEvent: MessageComposerEvent? = null
     private val suggestionSearchTrigger = MutableStateFlow<Suggestion?>(null)
 
@@ -235,6 +241,8 @@ class MessageComposerPresenter(
 
         LaunchedEffect(cameraPermissionState.permissionGranted) {
             if (cameraPermissionState.permissionGranted) {
+                // pendingEvent can only be one of the camera events, no need to list all the other MessageComposerEvents
+                @Suppress("ElseCaseInsteadOfExhaustiveWhen")
                 when (pendingEvent) {
                     is MessageComposerEvent.PickAttachmentSource.PhotoFromCamera -> cameraPhotoPicker.launch()
                     is MessageComposerEvent.PickAttachmentSource.VideoFromCamera -> cameraVideoPicker.launch()
@@ -902,7 +910,9 @@ class MessageComposerPresenter(
                 }
                 setText(newComposerMode.content, markdownTextEditorState, richTextEditorState, requestFocus = true)
             }
-            else -> {
+            MessageComposerMode.Normal,
+            MessageComposerMode.Attachment,
+            is MessageComposerMode.Reply -> {
                 if (currentComposerMode is MessageComposerMode.Reply) {
                     val mediaSources = currentComposerMode.replyToDetails.content()?.mediaSources() ?: return@launch
                     val contentValidationState = contentValidationCache[currentComposerMode.replyToDetails.eventId()]

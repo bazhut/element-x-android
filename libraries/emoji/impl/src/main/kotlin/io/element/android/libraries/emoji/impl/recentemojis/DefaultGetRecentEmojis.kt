@@ -11,6 +11,7 @@ package io.element.android.libraries.emoji.impl.recentemojis
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.SessionScope
+import io.element.android.libraries.emoji.api.customemojis.isCustomEmojiKey
 import io.element.android.libraries.emoji.api.recentemojis.GetRecentEmojis
 import io.element.android.libraries.emoji.impl.EmojibaseProvider
 import io.element.android.libraries.matrix.api.MatrixClient
@@ -30,8 +31,8 @@ class DefaultGetRecentEmojis(
             .map { emojis ->
                 // Remove any possible duplicates
                 emojis.distinct()
-                    // Return only those emojis that are valid
-                    .filter { recent -> allEmojis.any { recent == it.unicode } }
+                    // Return only those emojis that are valid: known unicode emojis, or custom emojis (mxc:// keys)
+                    .filter { recent -> recent.isCustomEmojiKey() || allEmojis.any { recent == it.unicode } }
                     .toImmutableList()
             }
     }
